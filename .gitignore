@@ -1,0 +1,12 @@
+node_modules/
+res/*
+!res/qingyou*
+.vscode/
+src/static/ckeditor-src/
+src/static/ckeditor-full/
+.DS_Store
+.idea/
+.vscode/
+public/
+temp/
+individual.js
