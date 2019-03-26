@@ -1,1 +1,1 @@
-webpack.config.js
+this is fe project private webpack.config.js
