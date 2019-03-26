@@ -1,0 +1,95 @@
+#!/usr/bin/env node
+
+const { execSync } = require('child_process');
+
+const program = require('commander');
+const { upload } = require('upload_qianjin');
+
+const packageLib = require('./package.json');
+
+program
+    .version(packageLib.version)
+    .usage('./bin [options] <command>')
+    .option('-p, --product <product>', '指定要开发或者发布的产品，默认是student')
+    .option('-h, --host <host>', '指定开发用的host，默认是localhost')
+    .option('-t, --target <target>', '指定打包环境，默认是t1')
+    .option(
+        '-b, --backend <backend>',
+        '指定后台接口所在的服务器的域名或ip地址，默认是t1.learnta.cn'
+    )
+    .option('--port <port>', '指定开发用的端口号，默认是根据产品名自动分配')
+    .option('--hot <hot>', '是否启用模块热更新功能，默认是启用')
+    .option(
+        '-i, --inline <inline>',
+        '采用inline还是iframe模式进行更新（仅开发模式），默认是true，即inline模式'
+    )
+    .option('--https <https>', '是否启动Https，默认不是')
+    .option('--debug <debug>', '是否开启移动端debug模式，默认是false');
+
+program
+    .command('dev')
+    .description('开发者模式')
+    .action(devCmd);
+
+program
+    .command('release')
+    .description('生产模式')
+    .action(releaseCmd);
+
+program
+    .command('build')
+    .description('构建模式')
+    .action(buildCmd);
+
+program.parse(process.argv);
+
+function devCmd() {
+    setEnvs();
+    process.env.ENV = 'development';
+    process.env.NODE_ENV = 'development';
+    if (program.host) process.env.HOST = program.host === 'ip' ? getIpAddress() : program.env.HOST;
+    if (program.port) process.env.PORT = program.port;
+    execSync('npm run dev', { stdio: 'inherit' });
+}
+
+function buildCmd() {
+    setEnvs();
+    process.env.ENV = 'production';
+    process.env.NODE_ENV = 'production';
+
+    execSync('npm run build:webpack', { stdio: 'inherit' });
+}
+
+function releaseCmd() {
+    buildCmd();
+    upload();
+}
+
+function setEnvs() {
+    process.env.PRODUCT = program.product;
+    if (program.backend) process.env.BACKEND_IP = program.backend;
+    if (program.inline) process.env.INLINE = !!program.inline;
+    if (program.hot) {
+        process.env.HOT = !!program.hot;
+        process.env.inline = false;
+    }
+    if (program.https) process.env.HTTPS = !!JSON.parse(program.https);
+    process.env.TARGET = program.target || 't1';
+    process.env.BACKEND_IP = program.backend || 't1.learnta.cn';
+    process.env.DEBUG = !!program.debug;
+}
+
+function getIpAddress() {
+    let ipaddress = 'localhost';
+    const interfaces = os.networkInterfaces();
+    Object.keys(interfaces).forEach(devName => {
+        const iface = interfaces[devName];
+        for (let i = 0; i < iface.length; i += 1) {
+            const alias = iface[i];
+            if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
+                ipaddress = alias.address;
+            }
+        }
+    });
+    return ipaddress;
+}
